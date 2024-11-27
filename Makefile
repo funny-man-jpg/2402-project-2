@@ -2,7 +2,7 @@ TARGET = event.o manager.o main.o resource.o system.o
 
 
 p2:			${TARGET}
-			gcc -g -Wall -Wextra -fsanitize=thread -pthread -o p2 ${TARGET} defs.h
+			gcc -g -Wall -Wextra -pthread -o p2 ${TARGET} defs.h
 
 main: main.c defs.h
 	gcc -g -Wall -Wextra -pthread -c main.c

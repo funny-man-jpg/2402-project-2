@@ -33,7 +33,9 @@ void event_init(Event *event, System *system, Resource *resource, int status, in
  *
  * @param[out] queue  Pointer to the `EventQueue` to initialize.
  */
-void event_queue_init(EventQueue *queue) {}
+void event_queue_init(EventQueue *queue) {
+    queue->head = NULL;
+}
 
 /**
  * Cleans up the `EventQueue`.
@@ -42,8 +44,18 @@ void event_queue_init(EventQueue *queue) {}
  * 
  * @param[in,out] queue  Pointer to the `EventQueue` to clean.
  */
-void event_queue_clean(EventQueue *queue) {}
-
+void event_queue_clean(EventQueue *queue) {
+    if(queue->head == NULL){
+        return;
+    }
+    EventNode *currnode = queue->head;
+    while(currnode->next != NULL){
+        EventNode *temp = currnode->next;
+        free(currnode);
+        currnode = temp;
+    }
+    free(currnode);
+}
 /**
  * Pushes an `Event` onto the `EventQueue`.
  *
@@ -52,7 +64,21 @@ void event_queue_clean(EventQueue *queue) {}
  * @param[in,out] queue  Pointer to the `EventQueue`.
  * @param[in]     event  Pointer to the `Event` to push onto the queue.
  */
-void event_queue_push(EventQueue *queue, const Event *event) {}
+void event_queue_push(EventQueue *queue, const Event *event) {
+    EventNode *currnode = queue->head;
+    EventNode *newnode = (EventNode*)malloc(sizeof(EventNode));
+    newnode->event = *event;
+    newnode->next = NULL;
+    if(queue->head == NULL){
+        queue->head = newnode;
+        return;
+    }
+    while(currnode->next != NULL && currnode->next->event.priority >= event->priority){
+        currnode = currnode->next;
+    }
+    newnode->next = currnode->next;
+    currnode->next = newnode;
+}
 
 /**
  * Pops an `Event` from the `EventQueue`.
@@ -64,7 +90,13 @@ void event_queue_push(EventQueue *queue, const Event *event) {}
  * @return               Non-zero if an event was successfully popped; zero otherwise.
  */
 int event_queue_pop(EventQueue *queue, Event *event) {
-    // Temporarily, this only returns 0 so that it is ignored 
-    // during early testing. Replace this with the correct logic.
-    return 0;
+    if(queue->head == NULL){
+        return STATUS_EMPTY;
+    }
+    EventNode *temp = queue->head;
+    queue->head = queue->head->next;
+    *event = temp->event;
+    free(temp);
+    return STATUS_OK;
+
 }

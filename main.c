@@ -47,8 +47,7 @@ void load_data(Manager *manager) {
     resource_array_add(&manager->resource_array, oxygen);
     resource_array_add(&manager->resource_array, energy);
     resource_array_add(&manager->resource_array, distance);
-    return;
-    printf("%s, %s, %s, %s\n", manager->resource_array.resources[0]->name, manager->resource_array.resources[1]->name, manager->resource_array.resources[2]->name, manager->resource_array.resources[3]->name);
+    
 
     // Create systems
     System *propulsion_system, *life_support_system, *crew_capsule_system, *generator_system;
