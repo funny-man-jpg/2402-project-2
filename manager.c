@@ -59,7 +59,7 @@ void manager_run(Manager *manager) {
     
     event_found_flag = event_queue_pop(&manager->event_queue, &event);
 
-    while (event_found_flag) {
+    while (manager->simulation_running && event_found_flag) {
         // Handle the event
         printf("Event: [%s] Reported Resource [%s : %d] Status [%d]\n",
                 event.system->name,
@@ -149,7 +149,6 @@ void display_simulation_state(Manager *manager) {
     Resource *resource = NULL;
     int amount = 0; 
     int max_capacity = 0;
-    printf("%d", manager->resource_array.size);
     for (int i = 0; i < manager->resource_array.size; i++) {
         resource = manager->resource_array.resources[i];
 
@@ -200,5 +199,15 @@ void display_simulation_state(Manager *manager) {
     last_display_time = current_time;
     // Flush the output to ensure it appears immediately
     fflush(stdout);
+}
+
+void* manager_thread(void* n){
+    Manager* manager;
+    manager = n;
+    while (manager->simulation_running != 0)
+    {
+        manager_run(manager);
+    }
+    
 }
 

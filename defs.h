@@ -35,6 +35,7 @@ typedef struct Resource {
     char *name;      // Dynamically allocated string
     int amount;
     int max_capacity;
+    sem_t semaphor;
 } Resource;
 
 // Represents the amount of a resource consumed/produced for a single system
@@ -73,6 +74,7 @@ typedef struct EventNode {
 typedef struct EventQueue {
     EventNode *head;
     int size;
+    sem_t semaphore;
 } EventQueue;
 
 // A basic dynamic array to store all of the systems in the simulation
@@ -101,6 +103,7 @@ typedef struct Manager {
 void manager_init(Manager *manager);
 void manager_clean(Manager *manager);
 void manager_run(Manager *manager);
+void* manager_thread(void*);
 
 // System functions
 void system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue);
@@ -110,6 +113,7 @@ void system_run(System *system);
 // Resource functions
 void resource_create(Resource **resource, const char *name, int amount, int max_capacity);
 void resource_destroy(Resource *resource);
+
 
 // ResourceAmount functions
 void resource_amount_init(ResourceAmount *resource_amount, Resource *resource, int amount);
@@ -127,6 +131,7 @@ int event_queue_pop(EventQueue *queue, Event* event);
 void system_array_init(SystemArray *array);
 void system_array_clean(SystemArray *array);
 void system_array_add(SystemArray *array, System *system);
+void* system_thread(void*);
 
 void resource_array_init(ResourceArray *array);
 void resource_array_clean(ResourceArray *array);

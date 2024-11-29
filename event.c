@@ -35,6 +35,7 @@ void event_init(Event *event, System *system, Resource *resource, int status, in
  */
 void event_queue_init(EventQueue *queue) {
     queue->head = NULL;
+    sem_init(&queue->semaphore, 0, 1);
 }
 
 /**
@@ -55,6 +56,7 @@ void event_queue_clean(EventQueue *queue) {
         currnode = temp;
     }
     free(currnode);
+    sem_destroy(&queue->semaphore);
 }
 /**
  * Pushes an `Event` onto the `EventQueue`.
@@ -65,19 +67,33 @@ void event_queue_clean(EventQueue *queue) {
  * @param[in]     event  Pointer to the `Event` to push onto the queue.
  */
 void event_queue_push(EventQueue *queue, const Event *event) {
+    sem_wait(&queue->semaphore);
     EventNode *currnode = queue->head;
     EventNode *newnode = (EventNode*)malloc(sizeof(EventNode));
     newnode->event = *event;
     newnode->next = NULL;
     if(queue->head == NULL){
         queue->head = newnode;
+        sem_post(&queue->semaphore);
         return;
     }
-    while(currnode->next != NULL && currnode->next->event.priority >= event->priority){
-        currnode = currnode->next;
+    if(queue->head->event.priority < event->priority){
+        newnode->next = queue->head;
+        queue->head = newnode;
+        sem_post(&queue->semaphore);
+        return;
+    }
+    while(currnode->next != NULL){
+        if(currnode->next->event.priority >= event->priority){
+            currnode = currnode->next;
+        }
+        else{
+            break;
+        }
     }
     newnode->next = currnode->next;
     currnode->next = newnode;
+    sem_post(&queue->semaphore);
 }
 
 /**
@@ -90,13 +106,16 @@ void event_queue_push(EventQueue *queue, const Event *event) {
  * @return               Non-zero if an event was successfully popped; zero otherwise.
  */
 int event_queue_pop(EventQueue *queue, Event *event) {
+    sem_wait(&queue->semaphore);
     if(queue->head == NULL){
+        sem_post(&queue->semaphore);
         return STATUS_EMPTY;
     }
     EventNode *temp = queue->head;
     queue->head = queue->head->next;
     *event = temp->event;
     free(temp);
+    sem_post(&queue->semaphore);
     return STATUS_OK;
 
 }

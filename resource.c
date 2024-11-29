@@ -17,11 +17,12 @@
  * @param[in]  max_capacity  Maximum capacity of the resource.
  */
 void resource_create(Resource **resource, const char *name, int amount, int max_capacity) {
-    *resource = (Resource *) malloc(sizeof(Resource));
+    *resource = (Resource *) calloc(1, sizeof(Resource));
     (*resource)->amount = amount;
     (*resource)->max_capacity = max_capacity;
-    (*resource)->name = (char *) malloc(sizeof(name));
+    (*resource)->name = (char *) calloc(1, strlen(name) + 1);
     strcpy((*resource)->name, name);
+    sem_init(&(*resource)->semaphor, 0, 1);
 }
 
 /**
@@ -32,6 +33,7 @@ void resource_create(Resource **resource, const char *name, int amount, int max_
  * @param[in,out] resource  Pointer to the `Resource` to be destroyed.
  */
 void resource_destroy(Resource *resource) {
+    sem_destroy(&resource->semaphor);
     free(resource->name);
     free(resource);
 }
@@ -92,12 +94,11 @@ void resource_array_clean(ResourceArray *array) {
  * @param[in]     resource  Pointer to the `Resource` to add.
  */
 void resource_array_add(ResourceArray *array, Resource *resource) {
-    Resource** temp = NULL;
+    Resource **temp = NULL;
     if (array->size == array->capacity){
         temp = (Resource **) calloc(array->capacity * 2, sizeof(Resource*));
         for (int i = 0; i < array->size; i++)
         {
-            //This is gonna break
             temp[i] = array->resources[i];
         }
         free(array->resources);

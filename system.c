@@ -25,14 +25,14 @@ static int system_store_resources(System *);
  * @param[in]  event_queue     Pointer to the `EventQueue` for event handling.
  */
 void system_create(System **system, const char *name, ResourceAmount consumed, ResourceAmount produced, int processing_time, EventQueue *event_queue) {
-    *system = (System *) malloc(sizeof(System));
+    *system = (System *) calloc(1, sizeof(System));
     (*system)->amount_stored = 0;
     (*system)->consumed = consumed;
+    (*system)->produced = produced;
     (*system)->event_queue = event_queue;
-    (*system)->name = (char *) malloc(sizeof(name));
+    (*system)->name = (char *) calloc(1, strlen(name)+1);
     strcpy((*system)->name, name);
     (*system)->processing_time = processing_time;
-    (*system)->produced = produced;
     (*system)->status = STANDARD;
 }
 
@@ -61,7 +61,7 @@ void system_destroy(System *system) {
 void system_run(System *system) {
     Event event;
     int result_status;
-    
+
     if (system->amount_stored == 0) {
         // Need to convert resources (consume and process)
         result_status = system_convert(system);
@@ -99,18 +99,21 @@ void system_run(System *system) {
  * @return                         `STATUS_OK` if successful, or an error status code.
  */
 static int system_convert(System *system) {
+    
     int status;
     Resource *consumed_resource = system->consumed.resource;
     int amount_consumed = system->consumed.amount;
-
+    
     // We can always convert without consuming anything
     if (consumed_resource == NULL) {
         status = STATUS_OK;
     } else {
         // Attempt to consume the required resources
         if (consumed_resource->amount >= amount_consumed) {
+            sem_wait(&system->consumed.resource->semaphor);
             consumed_resource->amount -= amount_consumed;
             status = STATUS_OK;
+            sem_post(&system->consumed.resource->semaphor);
         } else {
             status = (consumed_resource->amount == 0) ? STATUS_EMPTY : STATUS_INSUFFICIENT;
         }
@@ -118,13 +121,16 @@ static int system_convert(System *system) {
 
     if (status == STATUS_OK) {
         system_simulate_process_time(system);
-
+        
         if (system->produced.resource != NULL) {
+            sem_wait(&system->produced.resource->semaphor);
             system->amount_stored += system->produced.amount;
+            sem_post(&system->produced.resource->semaphor);
         }
         else {
             system->amount_stored = 0;
         }
+        
     }
 
     return status;
@@ -171,10 +177,11 @@ static void system_simulate_process_time(System *system) {
 static int system_store_resources(System *system) {
     Resource *produced_resource = system->produced.resource;
     int available_space, amount_to_store;
-
+    sem_wait(&system->produced.resource->semaphor);
     // We can always proceed if there's nothing to store
     if (produced_resource == NULL || system->amount_stored == 0) {
         system->amount_stored = 0;
+        sem_post(&system->produced.resource->semaphor);
         return STATUS_OK;
     }
 
@@ -194,9 +201,10 @@ static int system_store_resources(System *system) {
     }
 
     if (system->amount_stored != 0) {
+        sem_post(&system->produced.resource->semaphor);
         return STATUS_CAPACITY;
     }
-
+    sem_post(&system->produced.resource->semaphor);
     return STATUS_OK;
 }
 
@@ -245,7 +253,6 @@ void system_array_add(SystemArray *array, System *system) {
         temp = (System **) calloc(array->capacity * 2, sizeof(System*));
         for (int i = 0; i < array->size; i++)
         {
-            //This is gonna break
             temp[i] = array->systems[i];
         }
         free(array->systems);
@@ -254,4 +261,15 @@ void system_array_add(SystemArray *array, System *system) {
     }
     array->systems[array->size] = system;
     array->size += 1;
+}
+
+void* system_thread(void* n){
+    System* system;
+    system = n;
+    
+    while (system->status != TERMINATE)
+    {
+        system_run(system);
+    }
+    
 }
